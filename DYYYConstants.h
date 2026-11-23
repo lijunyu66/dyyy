@@ -24,3 +24,4 @@
 #endif
 
 // fork 新增：横屏模式开关 DYYYEnableLandscape（设置项在 DYYYSettingViewController.m，Hook 在 DYYY.xm 末尾）
+// 使用方式：抖音内双指长按打开 DYYY 设置 → 第一组打开「启用横屏模式」，然后横置手机即可旋转
