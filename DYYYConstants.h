@@ -22,3 +22,5 @@
 #define DYYYGeonamesStatusUserInfoKey @"com.dyyy.geonames.api.status"
 
 #endif
+
+// fork 新增：横屏模式开关 DYYYEnableLandscape（设置项在 DYYYSettingViewController.m，Hook 在 DYYY.xm 末尾）
