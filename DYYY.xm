@@ -9392,3 +9392,104 @@ static void findTargetViewInView(UIView *view) {
         %init(DYYYFeedNowPlayingGroup);
     }
 }
+
+#pragma mark - 横屏模式（fork 新增，机主要求）
+// 抖音官方没有横屏布局，这里只做「解锁旋转」：开关 DYYYEnableLandscape 打开时，
+// 把应用级与容器级支持的方向放开到横竖屏，设备横过来即可旋转。
+// 注意：各页面没有横屏布局，旋转后可能出现留白/错位，属预期内的取舍。
+// 应用级用 MSHookMessageEx 而非 %orig：AppDelegate 若未实现该代理方法，
+// 原实现为空、不能调用 %orig；关闭开关时有原实现则回原实现，没有则按
+// Info.plist 的 UISupportedInterfaceOrientations 返回（与系统默认行为一致）。
+
+static UIInterfaceOrientationMask DYYYPlistOrientationMask(void) {
+    UIInterfaceOrientationMask mask = 0;
+    NSArray *orientations = [[NSBundle mainBundle] objectForInfoDictionaryKey:@"UISupportedInterfaceOrientations"];
+    for (NSString *name in orientations) {
+        if ([name containsString:@"PortraitUpsideDown"]) {
+            mask |= UIInterfaceOrientationMaskPortraitUpsideDown;
+        } else if ([name containsString:@"LandscapeLeft"]) {
+            mask |= UIInterfaceOrientationMaskLandscapeLeft;
+        } else if ([name containsString:@"LandscapeRight"]) {
+            mask |= UIInterfaceOrientationMaskLandscapeRight;
+        } else if ([name containsString:@"Portrait"]) {
+            mask |= UIInterfaceOrientationMaskPortrait;
+        }
+    }
+    return mask ?: UIInterfaceOrientationMaskPortrait;
+}
+
+static UIInterfaceOrientationMask (*DYYYOrigSupportedOrientations)(id, SEL, UIApplication *, UIWindow *) = NULL;
+
+static UIInterfaceOrientationMask DYYYUnlockSupportedOrientations(id self, SEL _cmd, UIApplication *application, UIWindow *window) {
+    if (DYYYGetBool(@"DYYYEnableLandscape")) {
+        return UIInterfaceOrientationMaskAllButUpsideDown;
+    }
+    if (DYYYOrigSupportedOrientations) {
+        return DYYYOrigSupportedOrientations(self, _cmd, application, window);
+    }
+    return DYYYPlistOrientationMask();
+}
+
+%hook UIViewController
+
+- (UIInterfaceOrientationMask)supportedInterfaceOrientations {
+    if (DYYYGetBool(@"DYYYEnableLandscape")) {
+        return UIInterfaceOrientationMaskAllButUpsideDown;
+    }
+    return %orig;
+}
+
+- (BOOL)shouldAutorotate {
+    if (DYYYGetBool(@"DYYYEnableLandscape")) {
+        return YES;
+    }
+    return %orig;
+}
+
+%end
+
+%hook UINavigationController
+
+- (UIInterfaceOrientationMask)supportedInterfaceOrientations {
+    if (DYYYGetBool(@"DYYYEnableLandscape")) {
+        return UIInterfaceOrientationMaskAllButUpsideDown;
+    }
+    return %orig;
+}
+
+- (BOOL)shouldAutorotate {
+    if (DYYYGetBool(@"DYYYEnableLandscape")) {
+        return YES;
+    }
+    return %orig;
+}
+
+%end
+
+%hook UITabBarController
+
+- (UIInterfaceOrientationMask)supportedInterfaceOrientations {
+    if (DYYYGetBool(@"DYYYEnableLandscape")) {
+        return UIInterfaceOrientationMaskAllButUpsideDown;
+    }
+    return %orig;
+}
+
+- (BOOL)shouldAutorotate {
+    if (DYYYGetBool(@"DYYYEnableLandscape")) {
+        return YES;
+    }
+    return %orig;
+}
+
+%end
+
+%ctor {
+    Class delegateClass = objc_getClass("AppDelegate");
+    if (delegateClass) {
+        MSHookMessageEx(delegateClass,
+                        @selector(application:supportedInterfaceOrientationsForWindow:),
+                        (IMP)DYYYUnlockSupportedOrientations,
+                        (IMP *)&DYYYOrigSupportedOrientations);
+    }
+}
