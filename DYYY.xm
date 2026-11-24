@@ -9430,6 +9430,8 @@ static UIInterfaceOrientationMask DYYYUnlockSupportedOrientations(id self, SEL _
     return DYYYPlistOrientationMask();
 }
 
+%group DYYYLandscapeGroup
+
 %hook UIViewController
 
 - (UIInterfaceOrientationMask)supportedInterfaceOrientations {
@@ -9484,7 +9486,10 @@ static UIInterfaceOrientationMask DYYYUnlockSupportedOrientations(id self, SEL _
 
 %end
 
+%end // DYYYLandscapeGroup
+
 %ctor {
+    %init(DYYYLandscapeGroup);
     Class delegateClass = objc_getClass("AppDelegate");
     if (delegateClass) {
         MSHookMessageEx(delegateClass,
